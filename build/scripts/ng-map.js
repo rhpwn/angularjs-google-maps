@@ -8,7 +8,7 @@ factory(root.angular);
 }
 }(this, function(angular) {
 /**
- * AngularJS Google Maps Ver. 1.18.7
+ * AngularJS Google Maps Ver. 1.18.4
  *
  * The MIT License (MIT)
  * 
@@ -142,9 +142,9 @@ angular.module('ngMap', []);
         for (var k2 in vm.map.customMarkers) {
           bounds.extend(vm.map.customMarkers[k2].getPosition());
         }
-    	  if (vm.mapOptions.maximumZoom) {
-    		  vm.enableMaximumZoomCheck = true; //enable zoom check after resizing for markers
-    	  }
+        if (vm.mapOptions.maximumZoom) {
+          vm.enableMaximumZoomCheck = true; //enable zoom check after resizing for markers
+        }
         vm.map.fitBounds(bounds);
       }
     };
@@ -261,17 +261,17 @@ angular.module('ngMap', []);
         }
       });
 
-	  //add maximum zoom listeners if zoom-to-include-markers and and maximum-zoom are valid attributes
-	  if (mapOptions.zoomToIncludeMarkers && mapOptions.maximumZoom) {
-	    google.maps.event.addListener(vm.map, 'zoom_changed', function() {
+    //add maximum zoom listeners if zoom-to-include-markers and and maximum-zoom are valid attributes
+    if (mapOptions.zoomToIncludeMarkers && mapOptions.maximumZoom) {
+      google.maps.event.addListener(vm.map, 'zoom_changed', function() {
           if (vm.enableMaximumZoomCheck == true) {
-			vm.enableMaximumZoomCheck = false;
-	        google.maps.event.addListenerOnce(vm.map, 'bounds_changed', function() {
-		      vm.map.setZoom(Math.min(mapOptions.maximumZoom, vm.map.getZoom()));
-		    });
-	  	  }
-	    });
-	  }
+      vm.enableMaximumZoomCheck = false;
+          google.maps.event.addListenerOnce(vm.map, 'bounds_changed', function() {
+          vm.map.setZoom(Math.min(mapOptions.maximumZoom, vm.map.getZoom()));
+        });
+        }
+      });
+    }
     };
 
     $scope.google = google; //used by $scope.eval to avoid eval()
@@ -295,10 +295,10 @@ angular.module('ngMap', []);
     if (options.lazyInit) { // allows controlled initialization
       // parse angular expression for dynamic ids
       if (!!$attrs.id &&
-      	  // starts with, at position 0
-	  $attrs.id.indexOf(exprStartSymbol, 0) === 0 &&
-	  // ends with
-	  $attrs.id.indexOf(exprEndSymbol, $attrs.id.length - exprEndSymbol.length) !== -1) {
+          // starts with, at position 0
+    $attrs.id.indexOf(exprStartSymbol, 0) === 0 &&
+    // ends with
+    $attrs.id.indexOf(exprEndSymbol, $attrs.id.length - exprEndSymbol.length) !== -1) {
         var idExpression = $attrs.id.slice(2,-2);
         var mapId = $parse(idExpression)($scope);
       } else {
@@ -1276,8 +1276,8 @@ angular.module('ngMap', []);
               infoWindow.open(map);
             }
             $timeout(function() { // to avoid racing condition
-              var infoWindowContainerEl = infoWindow.content.parentElement.parentElement.parentElement;
-              infoWindowContainerEl.className = "ng-map-info-window";
+              var infoWindowContainerEl = infoWindow.content.parentElement.parentElement;
+              infoWindowContainerEl.className = "gm-style-iw gm-style-iw-c ng-map-info-window";
             });
           });
         });
@@ -2452,8 +2452,8 @@ angular.module('ngMap', []);
 
   var escapeRegexpFilter = function() {
     return function(string) {
-			return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
-		};
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+    };
   };
 
   angular.module('ngMap').filter('escapeRegexp', escapeRegexpFilter);
@@ -3177,19 +3177,19 @@ angular.module('ngMap', []);
    * @desc delete a mapInstance
    */
   var deleteMapInstance= function(mapId) {
-	  for( var i=0; i<mapInstances.length; i++ ) {
-		  if( (mapInstances[i] !== null) && (mapInstances[i].id == mapId)) {
-			  mapInstances[i]= null;
-			  mapInstances.splice( i, 1 );
-		  }
-	  }
+    for( var i=0; i<mapInstances.length; i++ ) {
+      if( (mapInstances[i] !== null) && (mapInstances[i].id == mapId)) {
+        mapInstances[i]= null;
+        mapInstances.splice( i, 1 );
+      }
+    }
   };
 
   var NgMapPool = function(_$document_, _$window_, _$timeout_) {
     $document = _$document_[0], $window = _$window_, $timeout = _$timeout_;
 
     return {
-	  mapInstances: mapInstances,
+    mapInstances: mapInstances,
       resetMapInstances: resetMapInstances,
       getMapInstance: getMapInstance,
       returnMapInstance: returnMapInstance,

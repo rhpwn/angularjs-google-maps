@@ -1,5 +1,5 @@
 /**
- * AngularJS Google Maps Ver. 1.18.7
+ * AngularJS Google Maps Ver. 1.18.3
  *
  * The MIT License (MIT)
  * 
@@ -196,7 +196,7 @@ angular.module('ngMap', []);
       }
 
       // set options
-      mapOptions.zoom = (mapOptions.zoom && !isNaN(mapOptions.zoom)) ? +mapOptions.zoom : 15;
+      mapOptions.zoom = mapOptions.zoom || 15;
       var center = mapOptions.center;
       var exprRegExp = new RegExp(escapeRegExp(exprStartSymbol) + '.*' + escapeRegExp(exprEndSymbol));
 
@@ -411,20 +411,13 @@ angular.module('ngMap', []);
     var filtered = parser.filter(attrs);
     var options = parser.getOptions(filtered, {scope: scope});
     var events = parser.getEvents(scope, filtered);
-    var innerScope = scope.$new();
 
     /**
      * build a custom control element
      */
     var customControlEl = element[0].parentElement.removeChild(element[0]);
-    var content = $transclude( innerScope, function( clone ) {
-      element.empty();
-      element.append( clone );
-      element.on( '$destroy', function() {
-        innerScope.$destroy();
-      });
-    });
-    
+    var content = $transclude();
+    angular.element(customControlEl).append(content);
 
     /**
      * set events
@@ -488,22 +481,11 @@ angular.module('ngMap', []);
   'use strict';
   var parser, $timeout, $compile, NgMap;
 
-  var supportedTransform = (function getSupportedTransform() {
-    var prefixes = 'transform WebkitTransform MozTransform OTransform msTransform'.split(' ');
-    var div = document.createElement('div');
-    for(var i = 0; i < prefixes.length; i++) {
-      if(div && div.style[prefixes[i]] !== undefined) {
-        return prefixes[i];
-      }
-    }
-    return false;
-  })();
-
   var CustomMarker = function(options) {
     options = options || {};
 
     this.el = document.createElement('div');
-    this.el.style.display = 'block';
+    this.el.style.display = 'inline-block';
     this.el.style.visibility = "hidden";
     this.visible = true;
     for (var key in options) { /* jshint ignore:line */
@@ -518,8 +500,6 @@ angular.module('ngMap', []);
     CustomMarker.prototype.setContent = function(html, scope) {
       this.el.innerHTML = html;
       this.el.style.position = 'absolute';
-      this.el.style.top = 0;
-      this.el.style.left = 0;
       if (scope) {
         $compile(angular.element(this.el).contents())(scope);
       }
@@ -547,12 +527,8 @@ angular.module('ngMap', []);
           var posPixel = _this.getProjection().fromLatLngToDivPixel(_this.position);
           var x = Math.round(posPixel.x - (_this.el.offsetWidth/2));
           var y = Math.round(posPixel.y - _this.el.offsetHeight - 10); // 10px for anchor
-          if (supportedTransform) {
-            _this.el.style[supportedTransform] = "translate(" + x + "px, " + y + "px)";
-          } else {
-            _this.el.style.left = x + "px";
-            _this.el.style.top = y + "px";
-          }
+          _this.el.style.left = x + "px";
+          _this.el.style.top = y + "px";
           _this.el.style.visibility = "visible";
         };
         if (_this.el.offsetWidth && _this.el.offsetHeight) {
@@ -565,9 +541,8 @@ angular.module('ngMap', []);
     };
 
     CustomMarker.prototype.setZIndex = function(zIndex) {
-      if (zIndex === undefined) return;
-      (this.zIndex !== zIndex) && (this.zIndex = zIndex); /* jshint ignore:line */
-      (this.el.style.zIndex !== this.zIndex) && (this.el.style.zIndex = this.zIndex);
+      zIndex && (this.zIndex = zIndex); /* jshint ignore:line */
+      this.el.style.zIndex = this.zIndex;
     };
 
     CustomMarker.prototype.getVisible = function() {
@@ -575,12 +550,7 @@ angular.module('ngMap', []);
     };
 
     CustomMarker.prototype.setVisible = function(visible) {
-      if (this.el.style.display === 'none' && visible)
-      {
-          this.el.style.display = 'block';
-      } else if (this.el.style.display !== 'none' && !visible) {
-          this.el.style.display = 'none';
-      }
+      this.el.style.display = visible ? 'inline-block' : 'none';
       this.visible = visible;
     };
 
@@ -631,32 +601,29 @@ angular.module('ngMap', []);
       console.log("custom-marker options", options);
       var customMarker = new CustomMarker(options);
 
-      // Do we really need a timeout with $scope.$apply() here?
-      setTimeout(function() { //apply contents, class, and location after it is compiled
+      $timeout(function() { //apply contents, class, and location after it is compiled
 
-        scope.$watch('[' + varsToWatch.join(',') + ']', function(newVal, oldVal) {
+        scope.$watch('[' + varsToWatch.join(',') + ']', function() {
           customMarker.setContent(orgHtml, scope);
         }, true);
 
         customMarker.setContent(element[0].innerHTML, scope);
-        var classNames =
-          (element[0].firstElementChild) && (element[0].firstElementChild.className || '');
-        customMarker.class && (classNames += " " + customMarker.class);
+        var classNames = element[0].firstElementChild.className;
         customMarker.addClass('custom-marker');
-        classNames && customMarker.addClass(classNames);
+        customMarker.addClass(classNames);
         console.log('customMarker', customMarker, 'classNames', classNames);
 
         if (!(options.position instanceof google.maps.LatLng)) {
           NgMap.getGeoLocation(options.position).then(
-            function(latlng) {
-              customMarker.setPosition(latlng);
-            }
+                function(latlng) {
+                  customMarker.setPosition(latlng);
+                }
           );
         }
 
       });
 
-      console.log("custom-marker events", events);
+      console.log("custom-marker events", "events");
       for (var eventName in events) { /* jshint ignore:line */
         google.maps.event.addDomListener(
           customMarker.el, eventName, events[eventName]);
@@ -691,7 +658,6 @@ angular.module('ngMap', []);
       restrict: 'E',
       require: ['?^map','?^ngMap'],
       compile: function(element) {
-        console.log('el', element);
         setCustomMarker();
         element[0].style.display ='none';
         var orgHtml = element.html();
@@ -749,12 +715,6 @@ angular.module('ngMap', []);
   'use strict';
   var NgMap, $timeout, NavigatorGeolocation;
 
-  var requestTimeout, routeRequest;
-  // Delay for each route render to accumulate all requests into a single one
-  // This is required for simultaneous origin\waypoints\destination change
-  // 20ms should be enough to merge all request data
-  var routeRenderDelay = 20;
-
   var getDirectionsRenderer = function(options, events) {
     if (options.panel) {
       options.panel = document.getElementById(options.panel) ||
@@ -778,52 +738,28 @@ angular.module('ngMap', []);
       'durationInTraffic', 'waypoints', 'optimizeWaypoints', 
       'provideRouteAlternatives', 'avoidHighways', 'avoidTolls', 'region'
     ];
-    if (request) {
-      for(var key in request) {
-        if (request.hasOwnProperty(key)) {
-          (validKeys.indexOf(key) === -1) && (delete request[key]);
-        }
-      }
+    for(var key in request){
+      (validKeys.indexOf(key) === -1) && (delete request[key]);
     }
 
     if(request.waypoints) {
-      // Check for acceptable values
-      if(!Array.isArray(request.waypoints)) {
+      // Check fo valid values
+      if(request.waypoints == "[]" || request.waypoints === "") {
         delete request.waypoints;
       }
     }
 
     var showDirections = function(request) {
-      if (requestTimeout && request) {
-        if (!routeRequest) {
-          routeRequest = request;
-        } else {
-          for (var attr in request) {
-            if (request.hasOwnProperty(attr)) {
-              routeRequest[attr] = request[attr];
-            }
-          }
-        }
-      } else {
-        requestTimeout = $timeout(function() {
-          if (!routeRequest) {
-            routeRequest = request;
-          }
-          directionsService.route(routeRequest, function(response, status) {
-            if (status == google.maps.DirectionsStatus.OK) {
-              renderer.setDirections(response);
-              // Unset request for the next call
-              routeRequest = undefined;
-            }
+      directionsService.route(request, function(response, status) {
+        if (status == google.maps.DirectionsStatus.OK) {
+          $timeout(function() {
+            renderer.setDirections(response);
           });
-          $timeout.cancel(requestTimeout);
-          // Unset expired timeout for the next call
-          requestTimeout = undefined;
-        }, routeRenderDelay);
-      }
+        }
+      });
     };
 
-    if (request && request.origin && request.destination) {
+    if (request.origin && request.destination) {
       if (request.origin == 'current-location') {
         NavigatorGeolocation.getCurrentPosition().then(function(ll) {
           request.origin = new google.maps.LatLng(ll.coords.latitude, ll.coords.longitude);
@@ -855,11 +791,6 @@ angular.module('ngMap', []);
       var options = parser.getOptions(filtered, {scope: scope});
       var events = parser.getEvents(scope, filtered);
       var attrsToObserve = parser.getAttrsToObserve(orgAttrs);
-
-      var attrsToObserve = [];
-      if (!filtered.noWatcher) {
-          attrsToObserve = parser.getAttrsToObserve(orgAttrs);
-      }
 
       var renderer = getDirectionsRenderer(options, events);
       mapController.addObject('directionsRenderers', renderer);
@@ -1126,7 +1057,7 @@ angular.module('ngMap', []);
          * set options
          */
         var options = parser.getOptions(filtered, {scope: scope});
-        options.data = $window[attrs.data] || parseScope(attrs.data, scope);
+        options.data = $window[attrs.data] || scope[attrs.data];
         if (options.data instanceof Array) {
           options.data = new google.maps.MVCArray(options.data);
         } else {
@@ -1141,13 +1072,6 @@ angular.module('ngMap', []);
         console.log('heatmap-layer options', layer, 'events', events);
 
         mapController.addObject('heatmapLayers', layer);
-        
-        //helper get nexted path
-        function parseScope( path, obj ) {
-            return path.split('.').reduce( function( prev, curr ) {
-                return prev[curr];
-            }, obj || this );
-        }
       }
      }; // return
   }]);
@@ -1266,10 +1190,8 @@ angular.module('ngMap', []);
             } else {
               infoWindow.open(map);
             }
-            $timeout(function() { // to avoid racing condition
-              var infoWindowContainerEl = infoWindow.content.parentElement.parentElement.parentElement;
-              infoWindowContainerEl.className = "ng-map-info-window";
-            });
+            var infoWindowContainerEl = infoWindow.content.parentElement.parentElement.parentElement;
+            infoWindowContainerEl.className = "ng-map-info-window";
           });
         });
       };
@@ -1957,7 +1879,6 @@ angular.module('ngMap', []);
  * Example:
  *   <script src="https://maps.googleapis.com/maps/api/js?libraries=places"></script>
  *   <input places-auto-complete types="['geocode']" on-place-changed="myCallback(place)" component-restrictions="{country:'au'}"/>
- *
  */
 /* global google */
 (function() {
@@ -1974,7 +1895,6 @@ angular.module('ngMap', []);
       var options = parser.getOptions(filtered, {scope: scope});
       var events = parser.getEvents(scope, filtered);
       var autocomplete = new google.maps.places.Autocomplete(element[0], options);
-      autocomplete.setOptions({strictBounds: options.strictBounds === true});
       for (var eventName in events) {
         google.maps.event.addListener(autocomplete, eventName, events[eventName]);
       }
@@ -1987,37 +1907,20 @@ angular.module('ngMap', []);
       google.maps.event.addListener(autocomplete, 'place_changed', updateModel);
       element[0].addEventListener('change', updateModel);
 
-      attrs.$observe('rectBounds', function(val) {
-        if (val) {
-          var bounds = parser.toOptionValue(val, {key: 'rectBounds'});
-          autocomplete.setBounds(new google.maps.LatLngBounds(
-            new google.maps.LatLng(bounds.south_west.lat, bounds.south_west.lng),
-            new google.maps.LatLng(bounds.north_east.lat, bounds.north_east.lng)));
-          }
-      });
-
-      attrs.$observe('circleBounds', function(val) {
-        if (val) {
-          var bounds = parser.toOptionValue(val, {key: 'circleBounds'});
-          var circle = new google.maps.Circle(bounds);
-          autocomplete.setBounds(circle.getBounds());
-        }
-      });
-
       attrs.$observe('types', function(val) {
         if (val) {
           var optionValue = parser.toOptionValue(val, {key: 'types'});
           autocomplete.setTypes(optionValue);
         }
       });
-
-      attrs.$observe('componentRestrictions', function (val) {
-        if (val) {
-          autocomplete.setComponentRestrictions(scope.$eval(val));
-        }
-      });
+	  
+	  attrs.$observe('componentRestrictions', function (val) {
+		 if (val) {
+		   autocomplete.setComponentRestrictions(scope.$eval(val));
+		 }
+	   });
     };
-
+	
     return {
       restrict: 'A',
       require: '?ngModel',
@@ -2060,7 +1963,7 @@ angular.module('ngMap', []);
  * @example
  * Usage:
  *   <map MAP_ATTRIBUTES>
- *    <shape name="SHAPE_NAME ANY_SHAPE_OPTIONS ANY_SHAPE_EVENTS"></shape>
+ *    <shape name=SHAPE_NAME ANY_SHAPE_OPTIONS ANY_SHAPE_EVENTS"></MARKER>
  *   </map>
  *
  * Example:
